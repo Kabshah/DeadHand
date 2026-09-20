@@ -1,0 +1,32 @@
+[project]
+name = "dead-switch"
+version = "0.1.0"
+description = "Add your description here"
+requires-python = ">=3.11"
+dependencies = [
+    "aiosqlite>=0.22.1",
+    "alembic>=1.19.2",
+    "asyncpg>=0.31.0",
+    "authlib>=1.8.0",
+    "celery[redis]>=5.6.3",
+    "cryptography>=50.0.1",
+    "email-validator>=2.3.0",
+    "fastapi>=0.141.1",
+    "flower>=2.1.0",
+    "httpx>=0.28.1",
+    "passlib>=1.7.4",
+    "psycopg2-binary>=2.9.13",
+    "pydantic-settings>=2.15.0",
+    "python-jose[cryptography]>=3.5.0",
+    "redis>=6.4.0",
+    "sqlalchemy[asyncio]>=2.0.52",
+    "uvicorn[standard]>=0.52.4",
+]
+
+[dependency-groups]
+dev = [
+    "fakeredis>=2.38.0",
+    "lupa>=2.8",
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+]

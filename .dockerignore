@@ -1,0 +1,35 @@
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+env/
+
+# Environment files (loaded at runtime, not baked into image)
+.env
+
+# Database & Scheduler local artifacts
+*.db
+*.db-journal
+*.sqlite3
+celerybeat-schedule*
+
+# Node / Frontend artifacts
+node_modules/
+frontend/node_modules/
+frontend/dist/
+
+# Git & IDE
+.git/
+.gitignore
+.vscode/
+.idea/
+
+# Operating system
+.DS_Store
+Thumbs.db
