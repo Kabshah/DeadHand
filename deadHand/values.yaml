@@ -8,7 +8,7 @@ fullnameOverride: ""
 backend:
   replicaCount: 1
   image:
-    repository: deadswitch-backend
+    repository: yapper9/deadswitch-backend
     tag: latest
     pullPolicy: IfNotPresent
   service:
@@ -43,7 +43,7 @@ backend:
 frontend:
   replicaCount: 1
   image:
-    repository: deadswitch-frontend
+    repository: yapper9/deadswitch-frontend
     tag: latest
     pullPolicy: IfNotPresent
   service:
@@ -77,7 +77,7 @@ celeryWorker:
   enabled: true
   replicaCount: 1
   image:
-    repository: deadswitch-backend
+    repository: yapper9/deadswitch-backend
     tag: latest
     pullPolicy: IfNotPresent
   command:
@@ -99,7 +99,7 @@ celeryBeat:
   enabled: true
   replicaCount: 1
   image:
-    repository: deadswitch-backend
+    repository: yapper9/deadswitch-backend
     tag: latest
     pullPolicy: IfNotPresent
   command:
@@ -122,7 +122,7 @@ flower:
   enabled: true
   replicaCount: 1
   image:
-    repository: deadswitch-backend
+    repository: yapper9/deadswitch-backend
     tag: latest
     pullPolicy: IfNotPresent
   command:
