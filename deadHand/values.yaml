@@ -1,0 +1,236 @@
+# Default values for deadHand Helm chart.
+# Tailored for local Minikube / Kubernetes development.
+
+nameOverride: ""
+fullnameOverride: ""
+
+# --- Backend API (FastAPI) ---
+backend:
+  replicaCount: 1
+  image:
+    repository: deadswitch-backend
+    tag: latest
+    pullPolicy: IfNotPresent
+  service:
+    name: backend
+    type: ClusterIP
+    port: 8000
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: 8000
+    initialDelaySeconds: 15
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+  readinessProbe:
+    httpGet:
+      path: /health
+      port: 8000
+    initialDelaySeconds: 10
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+# --- Frontend UI (React + Nginx Proxy) ---
+frontend:
+  replicaCount: 1
+  image:
+    repository: deadswitch-frontend
+    tag: latest
+    pullPolicy: IfNotPresent
+  service:
+    name: frontend
+    type: NodePort
+    port: 5173
+    targetPort: 5173
+    nodePort: 30173
+  resources:
+    requests:
+      cpu: 25m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+  livenessProbe:
+    httpGet:
+      path: /
+      port: 5173
+    initialDelaySeconds: 5
+    periodSeconds: 10
+  readinessProbe:
+    httpGet:
+      path: /
+      port: 5173
+    initialDelaySeconds: 5
+    periodSeconds: 5
+
+# --- Celery Worker ---
+celeryWorker:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: deadswitch-backend
+    tag: latest
+    pullPolicy: IfNotPresent
+  command:
+    - celery
+    - -A
+    - app.tasks.celery_app
+    - worker
+    - --loglevel=info
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 300m
+      memory: 512Mi
+
+# --- Celery Beat ---
+celeryBeat:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: deadswitch-backend
+    tag: latest
+    pullPolicy: IfNotPresent
+  command:
+    - celery
+    - -A
+    - app.tasks.celery_app
+    - beat
+    - --loglevel=info
+    - --schedule=/tmp/celerybeat-schedule
+  resources:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+    limits:
+      cpu: 150m
+      memory: 256Mi
+
+# --- Flower Monitoring Dashboard ---
+flower:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: deadswitch-backend
+    tag: latest
+    pullPolicy: IfNotPresent
+  command:
+    - celery
+    - -A
+    - app.tasks.celery_app
+    - flower
+    - --port=5555
+  service:
+    name: flower
+    type: NodePort
+    port: 5555
+    targetPort: 5555
+    nodePort: 30555
+  resources:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+    limits:
+      cpu: 150m
+      memory: 256Mi
+
+# --- PostgreSQL Database ---
+postgresql:
+  enabled: true
+  image:
+    repository: postgres
+    tag: 16-alpine
+    pullPolicy: IfNotPresent
+  service:
+    name: db
+    port: 5432
+  auth:
+    username: postgres
+    password: postgres
+    database: deadswitch
+  persistence:
+    enabled: true
+    size: 1Gi
+    storageClass: ""
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 250m
+      memory: 512Mi
+
+# --- Redis Cache & Broker ---
+redis:
+  enabled: true
+  image:
+    repository: redis
+    tag: 7-alpine
+    pullPolicy: IfNotPresent
+  service:
+    name: redis
+    port: 6379
+  persistence:
+    enabled: true
+    size: 500Mi
+    storageClass: ""
+  resources:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 256Mi
+
+# --- Application Configuration (ConfigMap) ---
+config:
+  appEnv: "development"
+  appBaseUrl: "http://localhost:8000"
+  frontendUrl: "http://localhost:5173"
+  smtpHost: "smtp.gmail.com"
+  smtpPort: "587"
+  otpTtlSeconds: "300"
+  otpRequestLimit: "3"
+  otpRequestWindowSec: "60"
+  otpVerifyAttemptLimit: "5"
+  trustProxyHeaders: "True"
+  maxSwitchesPerUser: "5"
+
+# --- Secrets (Kubernetes Secret) ---
+secrets:
+  databaseUrl: "postgresql+asyncpg://postgres:postgres@db:5432/deadswitch"
+  redisUrl: "redis://redis:6379/0"
+  jwtSecret: "change-me-to-a-long-random-secret"
+  jwtAccessTtlMin: "1440"
+  jwtRefreshTtlDays: "30"
+  fernetKey: "your-fernet-key-base64="
+  googleClientId: "your-google-client-id.apps.googleusercontent.com"
+  googleClientSecret: "your-google-client-secret"
+  googleRedirectUri: "http://localhost:8000/auth/callback"
+  smtpUser: "your-email@gmail.com"
+  smtpPassword: "your-app-password"
+  smtpFrom: "your-email@gmail.com"
+  sendgridApiKey: ""
+
+# --- Optional Ingress ---
+ingress:
+  enabled: false
+  className: "nginx"
+  annotations: {}
+  hosts:
+    - host: deadswitch.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []

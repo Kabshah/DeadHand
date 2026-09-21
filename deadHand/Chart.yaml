@@ -1,0 +1,6 @@
+apiVersion: v2
+name: deadhand
+description: Helm chart for deploying Dead Man's Switch on Kubernetes / Minikube
+type: application
+version: 0.1.0
+appVersion: "3.0.0"

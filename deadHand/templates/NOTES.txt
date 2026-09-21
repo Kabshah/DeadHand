@@ -1,0 +1,36 @@
+========================================================================
+🚀 Dead Man's Switch (deadHand) has been deployed to Kubernetes!
+========================================================================
+
+1. Get the application URL:
+{{- if contains "NodePort" .Values.frontend.service.type }}
+   Minikube command to open Frontend in your browser:
+     $ minikube service {{ include "deadHand.fullname" . }}-frontend
+
+   Or access directly via NodePort:
+     http://$(minikube ip):{{ .Values.frontend.service.nodePort }}
+
+{{- if .Values.flower.enabled }}
+   Minikube command to open Celery Flower Dashboard:
+     $ minikube service {{ include "deadHand.fullname" . }}-flower
+{{- end }}
+
+{{- else if contains "ClusterIP" .Values.frontend.service.type }}
+   Forward local port to Frontend:
+     $ kubectl port-forward svc/{{ include "deadHand.fullname" . }}-frontend 5173:5173
+     Access at: http://localhost:5173
+{{- end }}
+
+2. Check deployment status:
+     $ kubectl get pods -l app.kubernetes.io/instance={{ .Release.Name }}
+
+3. View backend logs:
+     $ kubectl logs -f deployment/{{ include "deadHand.fullname" . }}-backend -c backend
+
+4. View Celery worker logs:
+     $ kubectl logs -f deployment/{{ include "deadHand.fullname" . }}-worker -c celery-worker
+
+5. If pods are in ImagePullBackOff / ErrImageNeverPull, remember to load your local images into Minikube:
+     $ minikube image load {{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}
+     $ minikube image load {{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag }}
+========================================================================

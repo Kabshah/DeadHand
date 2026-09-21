@@ -1,0 +1,101 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "deadHand.fullname" . }}-backend
+  labels:
+    {{- include "deadHand.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backend
+spec:
+  replicas: {{ .Values.backend.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "deadHand.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: backend
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "deadHand.name" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: backend
+    spec:
+      initContainers:
+        {{- if .Values.postgresql.enabled }}
+        - name: wait-for-db
+          image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}"
+          imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
+          command:
+            - /bin/sh
+            - -c
+            - |
+              python -c '
+              import socket, time
+              for i in range(60):
+                  try:
+                      s = socket.create_connection(("{{ .Values.postgresql.service.name }}", {{ .Values.postgresql.service.port }}), timeout=2)
+                      s.close()
+                      print("Database reachable!")
+                      exit(0)
+                  except Exception as e:
+                      print(f"Waiting for database... ({e})")
+                      time.sleep(2)
+              exit(1)
+              '
+        - name: run-migrations
+          image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}"
+          imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
+          command:
+            - /bin/sh
+            - -c
+            - alembic upgrade head
+          envFrom:
+            - configMapRef:
+                name: {{ include "deadHand.fullname" . }}-config
+            - secretRef:
+                name: {{ include "deadHand.fullname" . }}-secret
+        {{- end }}
+      containers:
+        - name: backend
+          image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}"
+          imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
+          command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+          ports:
+            - name: http
+              containerPort: {{ .Values.backend.service.port }}
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: {{ include "deadHand.fullname" . }}-config
+            - secretRef:
+                name: {{ include "deadHand.fullname" . }}-secret
+          {{- with .Values.backend.livenessProbe }}
+          livenessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.backend.readinessProbe }}
+          readinessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.backend.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.backend.service.name }}
+  labels:
+    {{- include "deadHand.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backend
+spec:
+  type: {{ .Values.backend.service.type }}
+  ports:
+    - name: http
+      port: {{ .Values.backend.service.port }}
+      targetPort: {{ .Values.backend.service.port }}
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: {{ include "deadHand.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: backend

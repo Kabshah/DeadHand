@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "deadHand.fullname" . }}-config
+  labels:
+    {{- include "deadHand.labels" . | nindent 4 }}
+data:
+  APP_ENV: {{ .Values.config.appEnv | quote }}
+  APP_BASE_URL: {{ .Values.config.appBaseUrl | quote }}
+  FRONTEND_URL: {{ .Values.config.frontendUrl | quote }}
+  SMTP_HOST: {{ .Values.config.smtpHost | quote }}
+  SMTP_PORT: {{ .Values.config.smtpPort | quote }}
+  OTP_TTL_SECONDS: {{ .Values.config.otpTtlSeconds | quote }}
+  OTP_REQUEST_LIMIT: {{ .Values.config.otpRequestLimit | quote }}
+  OTP_REQUEST_WINDOW_SEC: {{ .Values.config.otpRequestWindowSec | quote }}
+  OTP_VERIFY_ATTEMPT_LIMIT: {{ .Values.config.otpVerifyAttemptLimit | quote }}
+  TRUST_PROXY_HEADERS: {{ .Values.config.trustProxyHeaders | quote }}
+  MAX_SWITCHES_PER_USER: {{ .Values.config.maxSwitchesPerUser | quote }}

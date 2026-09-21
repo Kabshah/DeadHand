@@ -1,0 +1,85 @@
+{{- if .Values.flower.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "deadHand.fullname" . }}-flower
+  labels:
+    {{- include "deadHand.labels" . | nindent 4 }}
+    app.kubernetes.io/component: flower
+spec:
+  replicas: {{ .Values.flower.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "deadHand.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: flower
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "deadHand.name" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: flower
+    spec:
+      initContainers:
+        - name: wait-for-redis
+          image: "{{ .Values.flower.image.repository }}:{{ .Values.flower.image.tag }}"
+          imagePullPolicy: {{ .Values.flower.image.pullPolicy }}
+          command:
+            - /bin/sh
+            - -c
+            - |
+              python -c '
+              import socket, time
+              for i in range(60):
+                  try:
+                      s = socket.create_connection(("{{ .Values.redis.service.name }}", {{ .Values.redis.service.port }}), timeout=2)
+                      s.close()
+                      print("Redis reachable!")
+                      exit(0)
+                  except Exception as e:
+                      print(f"Waiting for Redis... ({e})")
+                      time.sleep(2)
+              exit(1)
+              '
+      containers:
+        - name: flower
+          image: "{{ .Values.flower.image.repository }}:{{ .Values.flower.image.tag }}"
+          imagePullPolicy: {{ .Values.flower.image.pullPolicy }}
+          command:
+            {{- toYaml .Values.flower.command | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.flower.service.targetPort }}
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: {{ include "deadHand.fullname" . }}-config
+            - secretRef:
+                name: {{ include "deadHand.fullname" . }}-secret
+          {{- with .Values.flower.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "deadHand.fullname" . }}-flower
+  labels:
+    {{- include "deadHand.labels" . | nindent 4 }}
+    app.kubernetes.io/component: flower
+spec:
+  type: {{ .Values.flower.service.type }}
+  ports:
+    - name: http
+      port: {{ .Values.flower.service.port }}
+      targetPort: {{ .Values.flower.service.targetPort }}
+      {{- if and (eq .Values.flower.service.type "NodePort") .Values.flower.service.nodePort }}
+      nodePort: {{ .Values.flower.service.nodePort }}
+      {{- end }}
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: {{ include "deadHand.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: flower
+{{- end }}

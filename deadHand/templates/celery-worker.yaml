@@ -1,0 +1,59 @@
+{{- if .Values.celeryWorker.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "deadHand.fullname" . }}-worker
+  labels:
+    {{- include "deadHand.labels" . | nindent 4 }}
+    app.kubernetes.io/component: celery-worker
+spec:
+  replicas: {{ .Values.celeryWorker.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "deadHand.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: celery-worker
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "deadHand.name" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: celery-worker
+    spec:
+      initContainers:
+        - name: wait-for-dependencies
+          image: "{{ .Values.celeryWorker.image.repository }}:{{ .Values.celeryWorker.image.tag }}"
+          imagePullPolicy: {{ .Values.celeryWorker.image.pullPolicy }}
+          command:
+            - /bin/sh
+            - -c
+            - |
+              python -c '
+              import socket, time
+              for host, port in [("{{ .Values.postgresql.service.name }}", {{ .Values.postgresql.service.port }}), ("{{ .Values.redis.service.name }}", {{ .Values.redis.service.port }})]:
+                  for i in range(60):
+                      try:
+                          s = socket.create_connection((host, port), timeout=2)
+                          s.close()
+                          print(f"{host}:{port} is reachable!")
+                          break
+                      except Exception as e:
+                          print(f"Waiting for {host}:{port}... ({e})")
+                          time.sleep(2)
+              '
+      containers:
+        - name: celery-worker
+          image: "{{ .Values.celeryWorker.image.repository }}:{{ .Values.celeryWorker.image.tag }}"
+          imagePullPolicy: {{ .Values.celeryWorker.image.pullPolicy }}
+          command:
+            {{- toYaml .Values.celeryWorker.command | nindent 12 }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "deadHand.fullname" . }}-config
+            - secretRef:
+                name: {{ include "deadHand.fullname" . }}-secret
+          {{- with .Values.celeryWorker.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+{{- end }}
